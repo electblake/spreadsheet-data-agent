@@ -123,60 +123,14 @@ def generate(
                 dim=-1,
             )
 
-        draft_ids = model.generate(
+        answer_ids = model.generate(
             input_ids=reasoning_ids,
             attention_mask=torch.ones_like(reasoning_ids),
             max_new_tokens=512,
-            do_sample=True,
-            temperature=0.6,
-            top_p=0.95,
-            top_k=20,
-        )
-
-        draft = tokenizer.decode(
-            draft_ids[0, reasoning_ids.shape[-1] :],
-            skip_special_tokens=True,
-        ).strip()
-        final_messages = [
-            {
-                "role": "system",
-                "content": (
-                    "Return only the final answer requested by the user. Do not include "
-                    "analysis, reasoning, self-correction, or commentary. Preserve any "
-                    "requested output format exactly."
-                ),
-            },
-            {
-                "role": "user",
-                "content": f"Request:\n{user_prompt}\n\nDraft response:\n{draft}",
-            },
-        ]
-        final_inputs = tokenizer.apply_chat_template(
-            final_messages,
-            add_generation_prompt=True,
-            tokenize=True,
-            return_dict=True,
-            return_tensors="pt",
-        ).to(model.device)
-        final_input_ids = torch.cat(
-            [
-                final_inputs["input_ids"],
-                torch.tensor([[think_end_token]], device=model.device),
-            ],
-            dim=-1,
-        )
-        final_ids = model.generate(
-            input_ids=final_input_ids,
-            attention_mask=torch.ones_like(final_input_ids),
-            max_new_tokens=512,
-            do_sample=True,
-            temperature=0.6,
-            top_p=0.95,
-            top_k=20,
         )
 
     return tokenizer.decode(
-        final_ids[0, final_input_ids.shape[-1] :],
+        answer_ids[0, reasoning_ids.shape[-1] :],
         skip_special_tokens=True,
     ).strip()
 
