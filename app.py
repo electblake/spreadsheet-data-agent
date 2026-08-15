@@ -92,7 +92,14 @@ def generate(
         user_content = f"{user_prompt}\n\n<attachment>\n{attachment_text}\n</attachment>"
 
     messages = [
-        {"role": "system", "content": system_prompt},
+        {
+            "role": "system",
+            "content": (
+                f"{system_prompt}\n\nAfter private reasoning, answer once with only the "
+                "requested deliverable. Follow the user's output format exactly. Do not "
+                "restate analysis, reasoning, or self-correction in the final answer."
+            ),
+        },
         {"role": "user", "content": user_content},
     ]
     inputs = tokenizer.apply_chat_template(
