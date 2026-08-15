@@ -129,6 +129,17 @@ def generate(
                 ],
                 dim=-1,
             )
+        reasoning_ids = torch.cat(
+            [
+                reasoning_ids,
+                tokenizer.encode(
+                    "\n\n",
+                    add_special_tokens=False,
+                    return_tensors="pt",
+                ).to(model.device),
+            ],
+            dim=-1,
+        )
 
         answer_ids = model.generate(
             input_ids=reasoning_ids,
