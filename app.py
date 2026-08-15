@@ -103,22 +103,38 @@ def generate(
         return_tensors="pt",
     ).to(model.device)
 
+    think_end_token = tokenizer.convert_tokens_to_ids("</think>")
     with torch.inference_mode():
-        generated = model.generate(
+        reasoning_ids = model.generate(
             **inputs,
-            max_new_tokens=4096,
+            max_new_tokens=2048,
+            do_sample=True,
+            temperature=0.6,
+            top_p=0.95,
+            top_k=20,
+            eos_token_id=think_end_token,
+        )
+        if reasoning_ids[0, -1].item() != think_end_token:
+            reasoning_ids = torch.cat(
+                [
+                    reasoning_ids,
+                    torch.tensor([[think_end_token]], device=model.device),
+                ],
+                dim=-1,
+            )
+
+        answer_ids = model.generate(
+            input_ids=reasoning_ids,
+            attention_mask=torch.ones_like(reasoning_ids),
+            max_new_tokens=1024,
             do_sample=True,
             temperature=0.6,
             top_p=0.95,
             top_k=20,
         )
 
-    output_ids = generated[0, inputs["input_ids"].shape[-1] :].tolist()
-    think_end_token = tokenizer.convert_tokens_to_ids("</think>")
-    answer_start = len(output_ids) - output_ids[::-1].index(think_end_token)
-
     return tokenizer.decode(
-        output_ids[answer_start:],
+        answer_ids[0, reasoning_ids.shape[-1] :],
         skip_special_tokens=True,
     ).strip()
 
