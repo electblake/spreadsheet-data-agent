@@ -57,7 +57,7 @@ def file_to_text(file_path: str | None) -> str:
     return path.read_text(encoding="utf-8")
 
 
-@spaces.GPU(duration=120)
+@spaces.GPU(duration=300)
 def generate(
     system_prompt: str,
     user_prompt: str,
@@ -110,34 +110,22 @@ def generate(
         return_tensors="pt",
     ).to(model.device)
 
-    think_end_token = tokenizer.convert_tokens_to_ids("</think>")
     with torch.inference_mode():
-        reasoning_ids = model.generate(
+        generated = model.generate(
             **inputs,
-            max_new_tokens=2048,
+            max_new_tokens=8192,
             do_sample=True,
             temperature=0.6,
             top_p=0.95,
             top_k=20,
-            eos_token_id=think_end_token,
         )
-        if reasoning_ids[0, -1].item() != think_end_token:
-            reasoning_ids = torch.cat(
-                [
-                    reasoning_ids,
-                    torch.tensor([[think_end_token]], device=model.device),
-                ],
-                dim=-1,
-            )
 
-        answer_ids = model.generate(
-            input_ids=reasoning_ids,
-            attention_mask=torch.ones_like(reasoning_ids),
-            max_new_tokens=512,
-        )
+    output_ids = generated[0, inputs["input_ids"].shape[-1] :].tolist()
+    think_end_token = tokenizer.convert_tokens_to_ids("</think>")
+    answer_start = len(output_ids) - output_ids[::-1].index(think_end_token)
 
     return tokenizer.decode(
-        answer_ids[0, reasoning_ids.shape[-1] :],
+        output_ids[answer_start:],
         skip_special_tokens=True,
     ).strip()
 
