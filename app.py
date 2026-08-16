@@ -98,7 +98,7 @@ def generate(
         top_p=0.95,
         top_k=20,
     )
-    return completion["choices"][0]["message"]["content"].strip()
+    return completion["choices"][0]["message"]["content"].rsplit("</think>", 1)[-1].strip()
 
 
 CSS = """
