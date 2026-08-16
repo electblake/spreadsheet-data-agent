@@ -111,6 +111,9 @@ with gr.Blocks(css=CSS, title="Spreadsheet Data Agent") as demo:
     gr.Markdown(
         """
         # Spreadsheet Data Agent
+
+        [Code](https://github.com/electblake/Spreadsheet-RL-Data-Agent) | [Demo](https://huggingface.co/spaces/electblake/spreadsheet-data-agent) | [Paper](https://arxiv.org/abs/2605.22642) | [Spreadsheet-RL Model](https://huggingface.co/Spreadsheet-RL/Spreadsheet-RL-4B)
+
         Send instructions and optional file context to Spreadsheet-RL-4B. This first
         inference surface implements the prompt-and-file entry point from the agent diagram.
         """
@@ -152,6 +155,31 @@ with gr.Blocks(css=CSS, title="Spreadsheet Data Agent") as demo:
                 lines=28,
                 buttons=["copy"],
             )
+
+    gr.Markdown(
+        """
+        ---
+
+        ### Citation
+
+        If you use Spreadsheet-RL-4B, please cite the model's paper:
+
+        ```bibtex
+        @misc{chi2026spreadsheetrl,
+          title         = {Spreadsheet-RL: Advancing Large Language Model Agents on Realistic Spreadsheet Tasks via Reinforcement Learning},
+          author        = {Banghao Chi and Yining Xie and Mingyuan Wu and Jingcheng Yang and Jize Jiang and Zhaoheng Li and Shengyi Qian and Minjia Zhang and Klara Nahrstedt and Rui Hou and Xiangjun Fan and Hanchao Yu},
+          year          = {2026},
+          eprint        = {2605.22642},
+          archivePrefix = {arXiv},
+          primaryClass  = {cs.AI},
+          doi           = {10.48550/arXiv.2605.22642},
+          url           = {https://arxiv.org/abs/2605.22642}
+        }
+        ```
+
+        Citation from the [Spreadsheet-RL-4B model card](https://huggingface.co/Spreadsheet-RL/Spreadsheet-RL-4B#citation).
+        """
+    )
 
     run.click(
         fn=download_quant,
