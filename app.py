@@ -1,4 +1,5 @@
 from pathlib import Path
+import tomllib
 
 import gradio as gr
 import pandas as pd
@@ -7,6 +8,9 @@ from huggingface_hub import hf_hub_download
 from llama_cpp import Llama
 
 
+PROJECT_VERSION = tomllib.loads(
+    Path(__file__).with_name("pyproject.toml").read_text(encoding="utf-8")
+)["project"]["version"]
 MODEL_REPO = "mradermacher/Spreadsheet-RL-4B-GGUF"
 QUANT_FILES = {
     "Q2_K · 1.9 GB": "Spreadsheet-RL-4B.Q2_K.gguf",
@@ -102,15 +106,19 @@ def generate(
 
 
 CSS = """
-.gradio-container { max-width: 1180px !important; }
+.gradio-container {
+    width: min(calc(100% - 32px), 1600px) !important;
+    max-width: 1600px !important;
+    margin-inline: auto !important;
+}
 .agent-panel { border: 2px dashed #79b5ce; border-radius: 18px; padding: 8px; }
 .output-panel { border: 2px dashed #f0aeb7; border-radius: 18px; padding: 8px; }
 """
 
 with gr.Blocks(css=CSS, title="Spreadsheet Data Agent") as demo:
     gr.Markdown(
-        """
-        # Spreadsheet Data Agent
+        f"""
+        # Spreadsheet Data Agent · v{PROJECT_VERSION}
 
         [Code](https://github.com/electblake/Spreadsheet-RL-Data-Agent) | [Demo](https://huggingface.co/spaces/electblake/spreadsheet-data-agent) | [Paper](https://arxiv.org/abs/2605.22642) | [Spreadsheet-RL Model](https://huggingface.co/Spreadsheet-RL/Spreadsheet-RL-4B)
 
@@ -119,41 +127,58 @@ with gr.Blocks(css=CSS, title="Spreadsheet Data Agent") as demo:
         """
     )
 
-    with gr.Row():
-        with gr.Column(scale=1, elem_classes="agent-panel"):
-            gr.Markdown("### RL data input")
-            system_prompt = gr.Textbox(
-                label="System prompt",
-                value=(
-                    "You are a spreadsheet reasoning assistant. Inspect the supplied "
-                    "spreadsheet or text context and answer the user's request precisely."
-                ),
-                lines=5,
+    with gr.Tabs(selected="basic-data"):
+        with gr.Tab("Basic data only", id="basic-data"):
+            gr.Markdown(
+                "Uses the original inference workflow: uploaded files are converted to "
+                "plain data context and sent to the model with the prompt."
             )
-            user_prompt = gr.Textbox(
-                label="User prompt",
-                placeholder="Describe the spreadsheet task or ask a question…",
-                lines=8,
-            )
-            attachment = gr.File(
-                label="Optional file context",
-                file_types=[".txt", ".md", ".json", ".csv", ".tsv", ".xlsx", ".xls"],
-                type="filepath",
-            )
-            quantization = gr.Dropdown(
-                choices=list(QUANT_FILES),
-                value="Q4_K_M · 2.8 GB · recommended",
-                label="Spreadsheet-RL-4B quantization",
-                info="Static GGUF quants published by mradermacher; Q4_K_M is the reference recommendation.",
-            )
-            run = gr.Button("Run inference", variant="primary")
 
-        with gr.Column(scale=1, elem_classes="output-panel"):
-            gr.Markdown("### Agent response")
-            response = gr.Textbox(
-                label="Generated text",
-                lines=28,
-                buttons=["copy"],
+            with gr.Row():
+                with gr.Column(scale=1, elem_classes="agent-panel"):
+                    gr.Markdown("### RL data input")
+                    system_prompt = gr.Textbox(
+                        label="System prompt",
+                        value=(
+                            "You are a spreadsheet reasoning assistant. Inspect the supplied "
+                            "spreadsheet or text context and answer the user's request precisely."
+                        ),
+                        lines=5,
+                    )
+                    user_prompt = gr.Textbox(
+                        label="User prompt",
+                        placeholder="Describe the spreadsheet task or ask a question…",
+                        lines=8,
+                    )
+                    attachment = gr.File(
+                        label="Optional file context",
+                        file_types=[".txt", ".md", ".json", ".csv", ".tsv", ".xlsx", ".xls"],
+                        type="filepath",
+                    )
+                    quantization = gr.Dropdown(
+                        choices=list(QUANT_FILES),
+                        value="Q4_K_M · 2.8 GB · recommended",
+                        label="Spreadsheet-RL-4B quantization",
+                        info="Static GGUF quants published by mradermacher; Q4_K_M is the reference recommendation.",
+                    )
+                    run = gr.Button("Run inference", variant="primary")
+
+                with gr.Column(scale=1, elem_classes="output-panel"):
+                    gr.Markdown("### Agent response")
+                    response = gr.Textbox(
+                        label="Generated text",
+                        lines=28,
+                        buttons=["copy"],
+                    )
+
+        with gr.Tab("XLSX workflow", id="xlsx-workflow"):
+            gr.Markdown(
+                """
+                ## XLSX workbook workflow
+
+                This workflow is reserved for workbook-native inspection and interaction.
+                Its processing and inference features will be added separately.
+                """
             )
 
     gr.Markdown(
