@@ -1,12 +1,10 @@
-from gc import collect
 from pathlib import Path
 
 import gradio as gr
 import pandas as pd
 import spaces
-import torch
 from huggingface_hub import hf_hub_download
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from llama_cpp import Llama
 
 
 MODEL_REPO = "mradermacher/Spreadsheet-RL-4B-GGUF"
@@ -26,7 +24,6 @@ QUANT_FILES = {
 }
 
 model = None
-tokenizer = None
 active_quant = None
 
 
@@ -64,25 +61,17 @@ def generate(
     attachment: str | None,
     quantization: str,
 ) -> str:
-    global active_quant, model, tokenizer
+    global active_quant, model
 
     quant_file = QUANT_FILES[quantization]
     if active_quant != quantization:
         model = None
-        tokenizer = None
         active_quant = None
-        collect()
-        torch.cuda.empty_cache()
-
-        tokenizer = AutoTokenizer.from_pretrained(
-            MODEL_REPO,
-            gguf_file=quant_file,
-        )
-        model = AutoModelForCausalLM.from_pretrained(
-            MODEL_REPO,
-            gguf_file=quant_file,
-            dtype=torch.bfloat16,
-            device_map="cuda",
+        model = Llama(
+            model_path=hf_hub_download(repo_id=MODEL_REPO, filename=quant_file),
+            n_ctx=4096,
+            n_gpu_layers=-1,
+            verbose=True,
         )
         active_quant = quantization
 
@@ -102,55 +91,14 @@ def generate(
         },
         {"role": "user", "content": user_content},
     ]
-    inputs = tokenizer.apply_chat_template(
-        messages,
-        add_generation_prompt=True,
-        tokenize=True,
-        return_dict=True,
-        return_tensors="pt",
-    ).to(model.device)
-
-    think_end_token = tokenizer.convert_tokens_to_ids("</think>")
-    with torch.inference_mode():
-        reasoning_ids = model.generate(
-            **inputs,
-            max_new_tokens=2048,
-            do_sample=True,
-            temperature=0.6,
-            top_p=0.95,
-            top_k=20,
-            eos_token_id=think_end_token,
-        )
-        if reasoning_ids[0, -1].item() != think_end_token:
-            reasoning_ids = torch.cat(
-                [
-                    reasoning_ids,
-                    torch.tensor([[think_end_token]], device=model.device),
-                ],
-                dim=-1,
-            )
-        reasoning_ids = torch.cat(
-            [
-                reasoning_ids,
-                tokenizer.encode(
-                    "\n\n",
-                    add_special_tokens=False,
-                    return_tensors="pt",
-                ).to(model.device),
-            ],
-            dim=-1,
-        )
-
-        answer_ids = model.generate(
-            input_ids=reasoning_ids,
-            attention_mask=torch.ones_like(reasoning_ids),
-            max_new_tokens=512,
-        )
-
-    return tokenizer.decode(
-        answer_ids[0, reasoning_ids.shape[-1] :],
-        skip_special_tokens=True,
-    ).strip()
+    completion = model.create_chat_completion(
+        messages=messages,
+        max_tokens=512,
+        temperature=0.6,
+        top_p=0.95,
+        top_k=20,
+    )
+    return completion["choices"][0]["message"]["content"].strip()
 
 
 CSS = """

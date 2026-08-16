@@ -1,9 +1,7 @@
-accelerate
-gguf
 huggingface-hub>=0.34.0,<1.0
+--extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu130
+llama-cpp-python==0.3.34
 openpyxl
 pandas
 spaces
-torch==2.11.0
-transformers==4.57.6
 xlrd
