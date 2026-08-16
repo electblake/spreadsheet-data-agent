@@ -166,4 +166,4 @@ with gr.Blocks(css=CSS, title="Spreadsheet Data Agent") as demo:
         show_progress="full",
     )
 
-demo.queue().launch()
+demo.queue().launch(mcp_server=True)
