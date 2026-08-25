@@ -60,7 +60,7 @@ def make_plan(args):
     source_slug = slugify(source.stem)
     sheet_slug = f"--sheet-{slugify(args.sheet)}" if args.sheet else ""
     artifact_id = (
-        f"{report_date}--{source_slug}{sheet_slug}--sha256-{source_sha256[:16]}"
+        f"{report_date}--{source_slug}{sheet_slug}--sha256-{source_sha256[:16]}--v3"
     )
     title = f"{source.stem} ({report_date})"
     if args.sheet:
@@ -68,8 +68,10 @@ def make_plan(args):
 
     output_paths = {
         "summary_markdown": output_root / f"{artifact_id}--summary.md",
+        "company_markdown": output_root / f"{artifact_id}--company.md",
         "model_context": output_root / f"{artifact_id}--model-context.txt",
         "sheet_ndjson": output_root / f"{artifact_id}--sheet.ndjson",
+        "manifest_json": output_root / f"{artifact_id}--manifest.json",
     }
     outputs = {role: output_info(path) for role, path in output_paths.items()}
 
@@ -84,7 +86,7 @@ def make_plan(args):
             "iso": report_date,
         },
         "schema": "summarize-sheet.output-plan",
-        "schema_version": 1,
+        "schema_version": 3,
         "selection": {
             "mode": "named" if args.sheet else "first",
             "sheet": args.sheet,
