@@ -1,0 +1,6 @@
+# Ignore data files while retaining the directory structure and local guidance.
+*
+!*/
+!.gitignore
+!.gitkeep
+!AGENTS.override.md
