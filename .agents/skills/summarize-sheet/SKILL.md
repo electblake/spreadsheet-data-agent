@@ -1,6 +1,6 @@
 ---
 name: summarize-sheet
-description: "Summarize a local XLSX workbook into three project artifacts: a grounded Markdown business summary, a direct model-inference context, and a lossless Transco sheet NDJSON conversion. Use when spreadsheet contents need both human and model-readable summaries without modifying the workbook."
+description: "Summarize a local XLSX workbook into three deterministically named project artifacts: a grounded Markdown business summary, a direct model-inference context, and a lossless Transco sheet NDJSON conversion. Use when spreadsheet contents need both human and model-readable summaries without modifying the workbook."
 ---
 
 # Summarize Sheet
@@ -17,12 +17,37 @@ project-local `$ndjson-for-sheet` skill for the NDJSON conversion.
 - A local `.xlsx` path.
 - An optional worksheet name. When omitted, select the workbook's first worksheet,
   matching the app workflow.
+- A reporting date and its Python `datetime.strptime` format. Use an explicit date
+  supplied by the user or an unambiguous reporting date stated by the workbook; do
+  not guess an ambiguous date.
 
-Derive a lowercase hyphenated filename stem from the source workbook name.
+## Plan deterministic outputs
+
+Before reading workbook cells, run:
+
+```powershell
+python .agents/skills/summarize-sheet/scripts/plan_outputs.py <workbook.xlsx> --date <date> --date-format <format> [--sheet <exact-title>]
+```
+
+This stdlib-only script reads file metadata and bytes for SHA-256 identity. It does
+not parse workbook contents or write files. Its JSON is the authority for the
+canonical title, source identity, worksheet selection, and all output paths.
+
+Use `title` and the three `outputs.*.path` values verbatim. Never invent, shorten, or
+normalize artifact names separately. The naming convention is:
+
+```text
+YYYY-MM-DD--source-slug[--sheet-<sheet-slug>]--sha256-<first-16-hex>--<role>.<ext>
+```
+
+The full source SHA-256 is recorded at `source.sha256`. If `complete` is `true`, the
+same source bytes, reporting date, and worksheet selection already have all three
+artifacts; return those paths without regenerating them. Otherwise create only the
+outputs whose `exists` value is `false`.
 
 ## Outputs
 
-### `<stem>-summary.md`
+### `outputs.summary_markdown.path`
 
 Write an agent-authored summary grounded in the workbook's labels, values, and stored
 formula results. Include:
@@ -35,7 +60,7 @@ formula results. Include:
 
 Do not invent company facts or assign a business meaning to an unlabeled field.
 
-### `<stem>-model-context.txt`
+### `outputs.model_context.path`
 
 Write plain text in this exact shape:
 
@@ -69,14 +94,15 @@ cells. Preserve worksheet order and cell order. Include the single blank line sh
 between the two sections, matching the app's CSV serialization. End the output after
 the final CSV record.
 
-### `<stem>.ndjson`
+### `outputs.sheet_ndjson.path`
 
 Run the bundled conversion from `$ndjson-for-sheet` against the source workbook and
 write its output directly to this path.
 
 ## Verification
 
-Confirm that `data/processed/tables/` contains the three requested files, the model
-context matches the selected sheet and 100-by-50 bounds, the Markdown claims
-reconcile to source cells or stored totals, and every NDJSON line parses with the
-first record declaring `transco.sheet-ndjson` version `1`.
+Run the planner again with the same arguments and require `complete` to be `true`.
+Confirm that its output hashes the current source, the model context matches the
+selected sheet and 100-by-50 bounds, the Markdown claims reconcile to source cells
+or stored totals, and every NDJSON line parses with the first record declaring
+`transco.sheet-ndjson` version `1`.
