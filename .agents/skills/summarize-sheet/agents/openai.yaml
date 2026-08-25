@@ -1,0 +1,4 @@
+interface:
+  display_name: "Summarize Sheet"
+  short_description: "Create three human and model workbook summaries"
+  default_prompt: "Use $summarize-sheet to create Markdown, model-context, and NDJSON summaries for this local XLSX workbook."
