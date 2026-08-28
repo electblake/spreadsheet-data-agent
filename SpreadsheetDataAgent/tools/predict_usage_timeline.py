@@ -1,15 +1,19 @@
 import json
 
+from loguru import logger
 from openai import OpenAI
 from openpyxl import Workbook
 from workbook import load_workbook, read_defined_name_ranges
+
 from SpreadsheetDataAgent.config import MODEL_ID, SYSTEM_RULES
 
 QUESTION_PROMPT = """Identify the product rows and month usage columns in the supplied Excel {named_range} named-range data.
 
 Worksheet evidence:
-{worksheet_evidence}
+{sheet_evidence}
 """
+
+NAMED_RANGE = "USAGE_TIMELINE"
 
 def predict_usage_timeline(wb: Workbook):
     """TBD"""
@@ -23,19 +27,20 @@ def predict_usage_timeline(wb: Workbook):
 
     TASK RULES:
     - Distinguish that historical usage pattern from line-item logistics data such as container numbers, ports, booking statuses, ready dates, and warehouse ETAs.
+    - A positive match requires evidence of time periods, identifiable products, and recurring quantity values.
 
     SYSTEM RULES:
     - """
         + "\n- ".join(SYSTEM_RULES)
     )
 
-    named_range = "USAGE_TIMELINE"
+
 
     defined_name_ranges = read_defined_name_ranges(wb)
     usage_timeline_ranges = [
         (sheet_name, cell_range)
         for name, sheet_name, cell_ranges in defined_name_ranges
-        if name == named_range
+        if name == NAMED_RANGE
         for cell_range in cell_ranges
     ]
     usage_timeline = [
@@ -50,7 +55,7 @@ def predict_usage_timeline(wb: Workbook):
         for sheet_name, cell_range in usage_timeline_ranges
     ]
 
-    print("usage_timeline:", usage_timeline)
+    logger.debug("usage_timeline: {}", usage_timeline)
 
     sheet_evidence = json.dumps(usage_timeline)
 
@@ -58,10 +63,9 @@ def predict_usage_timeline(wb: Workbook):
         model=MODEL_ID,
         instructions=SYSTEM_PROMPT,
         input=QUESTION_PROMPT.format(
-            workbook_code_name=wb.code_name,
             workbook_sheetnames=", ".join(wb.sheetnames),
             sheet_evidence=sheet_evidence,
-            named_range=named_range,
+            named_range=NAMED_RANGE,
         ),
         text={
             "format": {
@@ -142,7 +146,12 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--file", required=True)
     args = parser.parse_args()
 
+    logger.debug("Opening workbook: {}", args.file)
     if wb := load_workbook(args.file):
+        logger.debug("Opened workbook: {}", args.file)
         predict_usage_timeline(wb)
+        logger.debug("Closing workbook: {}", args.file)
+        wb.close()
+        logger.debug("Closed workbook: {}", args.file)
     else:
         raise FileNotFoundError(args.file)

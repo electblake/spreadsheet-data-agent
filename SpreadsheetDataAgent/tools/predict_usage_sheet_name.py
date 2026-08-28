@@ -10,7 +10,7 @@ from SpreadsheetDataAgent.config import MODEL_ID, SYSTEM_RULES
 
 # logger.add(sys.stdout, colorize=True, format="<green>{time}</green> <level>{message}</level>")
 
-QUESTION_PROMPT = """Which worksheet in workbook file {workbook_filename} ({workbook_code_name}) tracks inventory/product usage over time?
+QUESTION_PROMPT = """Which worksheet in workbook {workbook_filename} tracks inventory/product usage over time?
 
 Candidate worksheets: {workbook_sheetnames}
 
@@ -27,14 +27,14 @@ def predict_sheet(wb: Workbook, file: str):
     SYSTEM_PROMPT = (
         """You identify the worksheet that tracks inventory or product usage over time.
 
-    Inventory/product usage means recurring product quantities organized by reporting period,
-    such as month-by-month quantities shipped, consumed, issued, or used.
+    Inventory/product usage means recurring product quantities organized by reporting period, such as month-by-month quantities shipped, consumed, issued, or used.
 
-    Distinguish that historical usage pattern from line-item logistics data such as container numbers, ports,
-    booking statuses, ready dates, and warehouse ETAs.
+    Distinguish that historical usage pattern from line-item logistics data such as container numbers, ports, booking statuses, ready dates, and warehouse ETAs. Also distinguish authoritative business records from diagnostic outputs that report errors, mismatches, discrepancies, variances, exceptions, validation failures, or expected-versus-actual comparisons.
 
     TASK RULES
     - Prefer period-level product usage history over line-item shipment, container, booking, or warehouse logistics records.
+    - Select a worksheet only when its rows directly record the business quantities used as the source of truth.
+    - Reject audit, reconciliation, exception, and error-report worksheets. Products, dates, and quantities appearing only to describe a mismatch or other problem are not usage history.
     - If the evidence is insufficient or multiple worksheets satisfy the criteria equally, return UNDETERMINED.
     - Return only one candidate worksheet name with identical spelling, or UNDETERMINED.
 
@@ -67,15 +67,18 @@ def predict_sheet(wb: Workbook, file: str):
 
     file_path = Path(file)
     workbook_filename = file_path.name
+    workbook_sheetnames=", ".join(wb.sheetnames)
 
-    logger.debug("Opening sheet prediction inference")
+    logger.debug(f"Creating openai inference ({MODEL_ID})")
+    logger.debug(f"- workbook_sheetnames: {workbook_sheetnames}")
+    logger.debug(f"- workbook_filename: {workbook_filename}")
+
     response = client.responses.create(
         model=MODEL_ID,
         instructions=SYSTEM_PROMPT,
         input=QUESTION_PROMPT.format(
             workbook_filename=workbook_filename,
-            workbook_code_name=wb.code_name,
-            workbook_sheetnames=", ".join(wb.sheetnames),
+            workbook_sheetnames=workbook_sheetnames,
             sheet_evidence=sheet_evidence,
         ),
         text={
@@ -97,10 +100,13 @@ def predict_sheet(wb: Workbook, file: str):
             }
         },
     )
-    logger.debug("Closed sheet prediction inference")
+    logger.debug("Closed openai inference ({MODEL_ID})")
 
     prediction = json.loads(response.output_text)
     logger.debug("Prediction response: {}", prediction)
+
+    if prediction["sheet_name"] == "UNDETERMINED":
+        raise ValueError("Could not determine the inventory usage worksheet")
 
     inventory_sheet = wb[prediction["sheet_name"]]
     logger.debug(

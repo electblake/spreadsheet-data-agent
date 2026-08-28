@@ -1,6 +1,9 @@
+import json
 from pathlib import Path
 
 from openpyxl import Workbook
+from openpyxl.utils.cell import range_boundaries
+from openpyxl.worksheet.worksheet import Worksheet
 
 
 def predict_layout_options(wb: Workbook):
@@ -34,3 +37,53 @@ def read_defined_name_ranges(wb: Workbook) -> list[tuple[str, str, list[str]]]:
         (name, sheet_name, cell_ranges)
         for (name, sheet_name), cell_ranges in ranges_by_name_and_sheet.items()
     ]
+
+def named_range_to_data(wb: Workbook, named_range:str) -> list[list[int|str|float]]:
+    named_range_data = []
+    for sheet_name, cell_range in wb.defined_names[named_range].destinations:
+        min_col, min_row, max_col, max_row = range_boundaries(cell_range)
+        named_range_data.extend(
+            [
+                value
+                if type(value) in (str, int, float)
+                else ""
+                if value is None
+                else str(value)
+                for value in row
+            ]
+            for row in wb[sheet_name].iter_rows(
+                min_row=min_row,
+                max_row=max_row,
+                min_col=min_col,
+                max_col=max_col,
+                values_only=True,
+            )
+        )
+    return named_range_data
+
+def sheet_to_data(ws: Worksheet) -> list:
+    """"""
+    wb_data=[]
+    wb_data.extend(
+        [
+            value
+            if type(value) in (str, int, float)
+            else ""
+            if value is None
+            else str(value)
+            for value in row
+        ]
+        for row in ws.iter_rows(values_only=True)
+    )
+    return wb_data
+
+def to_data(wb: Workbook) -> list[list[str|int|float]]:
+    wb_data = []
+    for ws in wb.worksheets:
+        wb_data.append({"worksheet_title": ws.title})
+        wb_data.extend(sheet_to_data(ws))
+    return wb_data
+
+def to_text(wb: Workbook) -> str:
+    wb_data = to_data(wb)
+    return json.dumps(wb_data, ensure_ascii=False)
