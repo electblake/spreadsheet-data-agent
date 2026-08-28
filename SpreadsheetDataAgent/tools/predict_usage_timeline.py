@@ -1,143 +1,94 @@
+import csv
 import json
+from pathlib import Path
 
 from loguru import logger
 from openai import OpenAI
 from openpyxl import Workbook
-from workbook import load_workbook, read_defined_name_ranges
+from workbook import load_workbook, to_data
 
-from SpreadsheetDataAgent.config import MODEL_ID, SYSTEM_RULES
+from SpreadsheetDataAgent.config import DATA_PATH, MODEL_ID
 
-QUESTION_PROMPT = """Identify the product rows and month usage columns in the supplied Excel {named_range} named-range data.
+QUESTION_PROMPT = """Convert the supplied workbook values into a product usage timeline.
 
-Worksheet evidence:
-{sheet_evidence}
+Workbook evidence:
+{workbook_evidence}
 """
 
 NAMED_RANGE = "USAGE_TIMELINE"
 
-def predict_usage_timeline(wb: Workbook):
-    """TBD"""
+def predict_usage_timeline(wb: Workbook) -> dict:
+    """Return a continuous monthly product usage timeline."""
 
     client = OpenAI()
 
-    SYSTEM_PROMPT = (
-        """You identify the product rows and month usage that tracks inventory/product usage over time.
+    system_prompt = """You convert workbook values into a normalized product usage timeline.
 
-    Inventory/product usage means recurring product quantities organized by reporting period, such as month-by-month quantities shipped, consumed, issued, or used.
+Use only the supplied literal values.
 
-    TASK RULES:
-    - Distinguish that historical usage pattern from line-item logistics data such as container numbers, ports, booking statuses, ready dates, and warehouse ETAs.
-    - A positive match requires evidence of time periods, identifiable products, and recurring quantity values.
+Output rules:
+- Return a rectangular table represented by one columns array and one rows array.
+- The first two columns must be exactly product_id and product_description.
+- Copy each product identifier and product description from the supplied values.
+- Determine the earliest and latest calendar month represented by the supplied values.
+- After product_description, include every calendar month from the earliest through the latest month, in chronological order, formatted as YYYY-MM.
+- Do not skip intervening months.
+- Return exactly one row per product.
+- Each row must contain the product identifier, product description, and one numeric total for every month column.
+- Sum values when the source contains multiple usage entries for the same product and month.
+- Use numeric zero when a product has no usage in a month within the continuous month range.
+- Every row must have exactly the same number of values as the columns array.
+- Do not return worksheet names, named ranges, cell ranges, cell coordinates, source references, explanations, or supporting text.
+"""
 
-    SYSTEM RULES:
-    - """
-        + "\n- ".join(SYSTEM_RULES)
-    )
+    workbook_values = to_data(wb)
+    logger.trace("workbook_values: {}", workbook_values)
 
+    workbook_evidence = json.dumps(workbook_values, ensure_ascii=False)
 
-
-    defined_name_ranges = read_defined_name_ranges(wb)
-    usage_timeline_ranges = [
-        (sheet_name, cell_range)
-        for name, sheet_name, cell_ranges in defined_name_ranges
-        if name == NAMED_RANGE
-        for cell_range in cell_ranges
-    ]
-    usage_timeline = [
-        {
-            "sheet_name": sheet_name,
-            "cell_range": cell_range,
-            "rows": [
-                {cell.coordinate: cell.value for cell in row}
-                for row in wb[sheet_name][cell_range]
-            ],
-        }
-        for sheet_name, cell_range in usage_timeline_ranges
-    ]
-
-    logger.debug("usage_timeline: {}", usage_timeline)
-
-    sheet_evidence = json.dumps(usage_timeline)
-
+    logger.debug("Creating product usage timeline response")
     response = client.responses.create(
         model=MODEL_ID,
-        instructions=SYSTEM_PROMPT,
+        instructions=system_prompt,
         input=QUESTION_PROMPT.format(
-            workbook_sheetnames=", ".join(wb.sheetnames),
-            sheet_evidence=sheet_evidence,
-            named_range=NAMED_RANGE,
+            workbook_evidence=workbook_evidence,
         ),
         text={
             "format": {
                 "type": "json_schema",
-                "name": "usage_timeline",
+                "name": "product_usage_timeline",
                 "strict": True,
                 "schema": {
                     "type": "object",
                     "properties": {
-                        "product_rows": {
+                        "columns": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        },
+                        "rows": {
                             "type": "array",
                             "items": {
-                                "type": "object",
-                                "properties": {
-                                    "sheet_name": {"type": "string"},
-                                    "cell_range": {"type": "string"},
-                                    "values": {
-                                        "type": "array",
-                                        "items": {
-                                            "type": [
-                                                "string",
-                                                "number",
-                                                "boolean",
-                                                "null",
-                                            ]
-                                        },
-                                    },
+                                "type": "array",
+                                "items": {
+                                    "type": [
+                                        "string",
+                                        "number",
+                                    ]
                                 },
-                                "required": [
-                                    "sheet_name",
-                                    "cell_range",
-                                    "values",
-                                ],
-                                "additionalProperties": False,
                             },
                         },
-                        "month_usage_columns": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "sheet_name": {"type": "string"},
-                                    "cell_range": {"type": "string"},
-                                    "values": {
-                                        "type": "array",
-                                        "items": {
-                                            "type": [
-                                                "string",
-                                                "number",
-                                                "boolean",
-                                                "null",
-                                            ]
-                                        },
-                                    },
-                                },
-                                "required": [
-                                    "sheet_name",
-                                    "cell_range",
-                                    "values",
-                                ],
-                                "additionalProperties": False,
-                            },
-                        }
                     },
-                    "required": ["product_rows", "month_usage_columns"],
+                    "required": ["columns", "rows"],
                     "additionalProperties": False,
                 },
             }
         },
     )
+    logger.debug("Created product usage timeline response")
 
-    return json.loads(response.output_text)
+    out = json.loads(response.output_text)
+    logger.trace("predicted response: {}", out)
+    return out
 
 if __name__ == "__main__":
     import argparse
@@ -146,12 +97,15 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--file", required=True)
     args = parser.parse_args()
 
-    logger.debug("Opening workbook: {}", args.file)
     if wb := load_workbook(args.file):
         logger.debug("Opened workbook: {}", args.file)
-        predict_usage_timeline(wb)
-        logger.debug("Closing workbook: {}", args.file)
+        usage_timeline = predict_usage_timeline(wb)
+        output_path = DATA_PATH / "processed" / "inventory" / Path(args.file).with_suffix(".csv").name
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with output_path.open("w", encoding="utf-8", newline="") as output_file:
+            writer = csv.writer(output_file)
+            writer.writerow(usage_timeline["columns"])
+            writer.writerows(usage_timeline["rows"])
         wb.close()
-        logger.debug("Closed workbook: {}", args.file)
     else:
         raise FileNotFoundError(args.file)

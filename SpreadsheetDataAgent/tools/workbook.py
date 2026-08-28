@@ -80,7 +80,12 @@ def sheet_to_data(ws: Worksheet) -> list:
 def to_data(wb: Workbook) -> list[list[str|int|float]]:
     wb_data = []
     for ws in wb.worksheets:
-        wb_data.append({"worksheet_title": ws.title})
+        wb_data.append({
+            "worksheet_title": ws.title,
+            "worksheet_max_rows": ws.max_row,
+            "worksheet_max_column": ws.max_column,
+            "named_ranges": read_defined_name_ranges(wb)
+        })
         wb_data.extend(sheet_to_data(ws))
     return wb_data
 

@@ -1,3 +1,7 @@
+from pathlib import Path
+
+DATA_PATH = (Path(__file__).parent.parent / "data").resolve()
+
 MODEL_ID = "gpt-5.5"
 
 SYSTEM_RULES = [
