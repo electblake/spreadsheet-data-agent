@@ -7,8 +7,13 @@ requires-python = ">=3.12.10"
 dependencies = [
     "huggingface-hub>=0.34.0,<1.0",
     "llama-cpp-python==0.3.34",
+    "loguru>=0.7.3",
+    "ndjson>=0.3.1",
+    "openai>=3.3.1",
     "openpyxl>=3.1.5",
     "pandas>=3.0.5",
+    "pytest>=9.1.1",
+    "ruff>=0.16.4",
     "spaces>=0.51.1",
     "xlrd>=2.0.2",
 ]

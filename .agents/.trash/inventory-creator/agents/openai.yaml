@@ -1,0 +1,4 @@
+interface:
+  display_name: "Inventory Creator"
+  short_description: "Standardize monthly product usage workbooks"
+  default_prompt: "Use $inventory-creator to convert this inventory usage workbook into reusable NDJSON and a standardized monthly usage spreadsheet."
