@@ -5,9 +5,13 @@ from pathlib import Path
 from loguru import logger
 from openai import OpenAI
 from openpyxl import Workbook
-from workbook import load_workbook, to_data
 
 from SpreadsheetDataAgent.config import DATA_PATH, MODEL_ID
+from SpreadsheetDataAgent.helpers.workbooks import (
+    load_workbook,
+    search_workbooks,
+    to_data,
+)
 
 QUESTION_PROMPT = """Convert the supplied workbook values into a product usage timeline.
 
@@ -94,13 +98,26 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-f", "--file", required=True)
+    parser.add_argument(
+        "-f",
+        "--file",
+        required=True,
+        type=Path,
+        help="Workbook path; absolute or relative to the current directory or data directory.",
+    )
     args = parser.parse_args()
 
-    if wb := load_workbook(args.file):
-        logger.debug("Opened workbook: {}", args.file)
+    file_path = search_workbooks(args.file)
+
+    if wb := load_workbook(file_path):
+        logger.debug("Opened workbook: {}", file_path)
         usage_timeline = predict_usage_timeline(wb)
-        output_path = DATA_PATH / "processed" / "inventory" / Path(args.file).with_suffix(".csv").name
+        output_path = (
+            DATA_PATH
+            / "processed"
+            / "inventory"
+            / file_path.with_suffix(".csv").name
+        )
         output_path.parent.mkdir(parents=True, exist_ok=True)
         with output_path.open("w", encoding="utf-8", newline="") as output_file:
             writer = csv.writer(output_file)
@@ -108,4 +125,4 @@ if __name__ == "__main__":
             writer.writerows(usage_timeline["rows"])
         wb.close()
     else:
-        raise FileNotFoundError(args.file)
+        raise FileNotFoundError(file_path)

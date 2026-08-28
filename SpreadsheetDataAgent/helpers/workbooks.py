@@ -5,12 +5,11 @@ from openpyxl import Workbook
 from openpyxl.utils.cell import range_boundaries
 from openpyxl.worksheet.worksheet import Worksheet
 
+from SpreadsheetDataAgent.config import DATA_PATH
 
-def predict_layout_options(wb: Workbook):
-    return {
-        "sheetnames": wb.sheetnames,
-
-    }
+def list_workbooks() -> list[Path]:
+    """returns list of supported xlsx files under DATA_PATH (relative to DATA_PATH)"""
+    return sorted(path.relative_to(DATA_PATH) for path in DATA_PATH.rglob("*.xlsx"))
 
 def load_workbook(file_path: str | Path) -> Workbook | None:
     """returns read-only file handler for xlsx/xlsm files"""
@@ -20,6 +19,25 @@ def load_workbook(file_path: str | Path) -> Workbook | None:
         # https://openpyxl.readthedocs.io/en/stable/tutorial.html#loading-from-a-file
         return load_workbook(filename=file_path, read_only=True, keep_vba=True, rich_text=True, keep_links=True, data_only=False)
     return None
+
+def search_workbooks(namelike: str | Path) -> Path:
+    file_path = Path(namelike)
+    if not file_path.is_absolute() and not file_path.is_file():
+        data_path_file = DATA_PATH / file_path
+        if data_path_file.is_file():
+            file_path = data_path_file
+        else:
+            matching_workbooks = [
+                workbook_path
+                for workbook_path in list_workbooks()
+                if workbook_path.name == file_path.name
+            ]
+            file_path = (
+                DATA_PATH / matching_workbooks[0]
+                if matching_workbooks
+                else data_path_file
+            )
+    return file_path.resolve()
 
 def read_defined_name_ranges(wb: Workbook) -> list[tuple[str, str, list[str]]]:
     defined_names = list(wb.defined_names.items())

@@ -1,13 +1,8 @@
-import argparse
 import posixpath
-import sys
+
 import zipfile
 from pathlib import Path
 from xml.etree import ElementTree as ET
-
-# VENDOR_DIR = Path(__file__).resolve().parents[1] / "vendor"
-# sys.dont_write_bytecode = True
-# sys.path.insert(0, str(VENDOR_DIR))
 
 import ndjson
 
@@ -48,11 +43,7 @@ BUILTIN_NUMBER_FORMATS = {
 
 
 def build_parser():
-    parser = argparse.ArgumentParser(
-        description="Convert an XLSX workbook to transco.sheet-ndjson records."
-    )
-    parser.add_argument("input_xlsx", type=Path)
-    parser.add_argument("output_ndjson", type=Path)
+
     return parser
 
 def workbook_records(input_path):
@@ -174,13 +165,18 @@ def workbook_records(input_path):
                 }
 
 
-def main():
-    args = build_parser().parse_args()
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(
+    description="Convert an XLSX workbook to transco.sheet-ndjson records."
+    )
+    parser.add_argument("input_xlsx", type=Path)
+    parser.add_argument("output_ndjson", type=Path)
+
+    args = parser.parse_args()
+
     with args.output_ndjson.open("w", encoding="utf-8", newline="\n") as output_file:
         writer = ndjson.writer(output_file, ensure_ascii=False, separators=(",", ":"))
         for record in workbook_records(args.input_xlsx):
             writer.writerow(record)
-
-
-if __name__ == "__main__":
-    main()

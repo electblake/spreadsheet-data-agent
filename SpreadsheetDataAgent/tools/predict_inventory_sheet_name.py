@@ -1,14 +1,12 @@
 import json
-import sys
 from pathlib import Path
 
 from loguru import logger
 from openai import OpenAI
 from openpyxl import Workbook
-from workbook import load_workbook
-from SpreadsheetDataAgent.config import MODEL_ID, SYSTEM_RULES
 
-# logger.add(sys.stdout, colorize=True, format="<green>{time}</green> <level>{message}</level>")
+from SpreadsheetDataAgent.config import MODEL_ID, SYSTEM_RULES
+from SpreadsheetDataAgent.helpers.workbooks import load_workbook, search_workbooks
 
 QUESTION_PROMPT = """Which worksheet in workbook {workbook_filename} tracks inventory/product usage over time?
 
@@ -18,7 +16,7 @@ Worksheet evidence:
 {sheet_evidence}
 """
 
-def predict_sheet(wb: Workbook, file: str):
+def predict_inventory_sheet_name(wb: Workbook, file: str | Path):
     """Use OpenAI to predict which sheet tracks inventory usage over time."""
 
     logger.debug("Opening sheet prediction process")
@@ -129,14 +127,21 @@ if __name__ == "__main__":
 
     logger.debug("Starting argument parsing")
     parser = argparse.ArgumentParser()
-    parser.add_argument("-f", "--file", required=True)
+    parser.add_argument(
+        "-f",
+        "--file",
+        required=True,
+        type=Path,
+        help="Workbook path or filename.",
+    )
     args = parser.parse_args()
 
+    file_path = search_workbooks(args.file)
     logger.debug("Opening workbook load process")
-    wb = load_workbook(args.file)
+    wb = load_workbook(file_path)
     logger.debug("Closed workbook load process")
 
     if wb:
-        predict_sheet(wb, args.file)
+        predict_inventory_sheet_name(wb, file_path)
     else:
-        raise FileNotFoundError(args.file)
+        raise FileNotFoundError(file_path)
