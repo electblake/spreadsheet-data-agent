@@ -7,9 +7,11 @@ from openai import OpenAI
 from openpyxl import Workbook
 
 from SpreadsheetDataAgent.config import DATA_PATH, MODEL_ID
+from SpreadsheetDataAgent.helpers.embeddings import num_tokens
 from SpreadsheetDataAgent.helpers.workbooks import (
     load_workbook,
     search_workbooks,
+    sheet_to_data,
     to_data,
 )
 
@@ -21,7 +23,11 @@ Workbook evidence:
 
 NAMED_RANGE = "USAGE_TIMELINE"
 
-def predict_usage_timeline(wb: Workbook) -> dict:
+def predict_usage_timeline(
+    wb: Workbook,
+    sheet_name: str | None = None,
+    sheet_index: int | None = None,
+) -> dict:
     """Return a continuous monthly product usage timeline."""
 
     client = OpenAI()
@@ -45,8 +51,14 @@ Output rules:
 - Do not return worksheet names, named ranges, cell ranges, cell coordinates, source references, explanations, or supporting text.
 """
 
-    workbook_values = to_data(wb)
-    logger.trace("workbook_values: {}", workbook_values)
+    if sheet_name is not None:
+        workbook_values = sheet_to_data(wb[sheet_name])
+    elif sheet_index is not None:
+        workbook_values = sheet_to_data(wb.worksheets[sheet_index])
+    else:
+        workbook_values = to_data(wb)
+
+    logger.trace("workbook_values: {} tokens", num_tokens(json.dumps(workbook_values)))
 
     workbook_evidence = json.dumps(workbook_values, ensure_ascii=False)
 
@@ -105,24 +117,41 @@ if __name__ == "__main__":
         type=Path,
         help="Workbook path; absolute or relative to the current directory or data directory.",
     )
+    sheet_selector = parser.add_mutually_exclusive_group()
+    sheet_selector.add_argument(
+        "-s",
+        "--sheet",
+        help="Limit usage inference to one worksheet.",
+    )
+    sheet_selector.add_argument(
+        "-i",
+        "--index",
+        type=int,
+        help="Limit usage inference to a worksheet by zero-based index.",
+    )
     args = parser.parse_args()
 
-    file_path = search_workbooks(args.file)
-
-    if wb := load_workbook(file_path):
-        logger.debug("Opened workbook: {}", file_path)
-        usage_timeline = predict_usage_timeline(wb)
-        output_path = (
-            DATA_PATH
-            / "processed"
-            / "inventory"
-            / file_path.with_suffix(".csv").name
-        )
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        with output_path.open("w", encoding="utf-8", newline="") as output_file:
-            writer = csv.writer(output_file)
-            writer.writerow(usage_timeline["columns"])
-            writer.writerows(usage_timeline["rows"])
-        wb.close()
+    if file_path := search_workbooks(args.file):
+        if wb := load_workbook(file_path):
+            logger.debug("Opened workbook: {}", file_path)
+            usage_timeline = predict_usage_timeline(
+                wb,
+                sheet_name=args.sheet,
+                sheet_index=args.index,
+            )
+            output_path = (
+                DATA_PATH
+                / "processed"
+                / "inventory"
+                / file_path.with_suffix(".csv").name
+            )
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            with output_path.open("w", encoding="utf-8", newline="") as output_file:
+                writer = csv.writer(output_file)
+                writer.writerow(usage_timeline["columns"])
+                writer.writerows(usage_timeline["rows"])
+            wb.close()
+        else:
+            logger.critical("load_workbook failed given {}", file_path)
     else:
-        raise FileNotFoundError(file_path)
+        logger.critical("search_workbooks returned None for {}", args.file)

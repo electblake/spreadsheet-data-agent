@@ -4,19 +4,29 @@ from pathlib import Path
 from loguru import logger
 from openai import OpenAI
 from openpyxl import Workbook
+from openpyxl.worksheet.worksheet import Worksheet
 
 from SpreadsheetDataAgent.config import MODEL_ID, SYSTEM_RULES
-from SpreadsheetDataAgent.helpers.workbooks import load_workbook, search_workbooks
+from SpreadsheetDataAgent.helpers.embeddings import num_tokens
+from SpreadsheetDataAgent.helpers.workbooks import (
+    load_workbook,
+    search_workbooks,
+    sheet_to_headers,
+    word_list,
+)
 
 QUESTION_PROMPT = """Which worksheet in workbook {workbook_filename} tracks inventory/product usage over time?
 
 Candidate worksheets: {workbook_sheetnames}
 
-Worksheet evidence:
-{sheet_evidence}
+Workbook evidence:
+{workbook_evidence}
 """
 
-def predict_inventory_sheet_name(wb: Workbook, file: str | Path):
+
+def predict_inventory_sheet_name(
+    wb: Workbook, workbook_filename: str
+) -> tuple[Worksheet, int]:
     """Use OpenAI to predict which sheet tracks inventory usage over time."""
 
     logger.debug("Opening sheet prediction process")
@@ -40,44 +50,52 @@ def predict_inventory_sheet_name(wb: Workbook, file: str | Path):
     - """
         + "\n- ".join(SYSTEM_RULES)
     )
-    sheet_evidence = "\n\n".join(
-        "\n".join(
-            [
-                f"Sheet: {ws.title}",
-                f"Dimensions: {ws.max_row} rows x {ws.max_column} columns",
-                *[
-                    ", ".join(
-                        f"{cell.coordinate}={cell.value!r}"
-                        for cell in row
-                        if cell.value is not None
-                    )
-                    for row in ws.iter_rows(
-                        min_row=1,
-                        max_row=min(ws.max_row, 15),
-                        max_col=min(ws.max_column, 20),
-                    )
-                    if any(cell.value is not None for cell in row)
-                ],
-            ]
-        )
-        for ws in wb.worksheets
-    )
 
-    file_path = Path(file)
-    workbook_filename = file_path.name
+
+    sheets_evidence = []
+    for worksheet_name in wb.sheetnames:
+        ws = wb[worksheet_name]
+
+        worksheet_headers = sheet_to_headers(ws)
+        worksheet_header_words = [
+            (
+                row_reference,
+                word_list(
+                    [
+                        value
+                        for value in header_values
+                        if isinstance(value, str)
+                    ]
+                ),
+            )
+            for row_reference, header_values in worksheet_headers
+        ]
+
+        sheets_evidence.append(f"""
+            ---
+            Worksheet Name: '{worksheet_name}'
+            Worksheet Headers (words): {worksheet_header_words}
+        """)
+
+    workbook_evidence = ("""Workbook Filename: {workbook_filename}
+
+    Worksheet Evidence List:
+    """ + "\n".join(sheets_evidence))
+
     workbook_sheetnames=", ".join(wb.sheetnames)
 
-    logger.debug(f"Creating openai inference ({MODEL_ID})")
-    logger.debug(f"- workbook_sheetnames: {workbook_sheetnames}")
-    logger.debug(f"- workbook_filename: {workbook_filename}")
+    logger.debug(f"workbook_sheetnames: {workbook_sheetnames}")
+    logger.debug(f"workbook_filename: {workbook_filename}")
+    logger.debug(f"workbook_evidence (tokens): {num_tokens(workbook_evidence)}")
 
+    logger.debug("Asking openai ({})\nQuestion: \n ```\n{}\n```", MODEL_ID, QUESTION_PROMPT)
     response = client.responses.create(
         model=MODEL_ID,
         instructions=SYSTEM_PROMPT,
         input=QUESTION_PROMPT.format(
             workbook_filename=workbook_filename,
             workbook_sheetnames=workbook_sheetnames,
-            sheet_evidence=sheet_evidence,
+            workbook_evidence=workbook_evidence,
         ),
         text={
             "format": {
@@ -98,34 +116,20 @@ def predict_inventory_sheet_name(wb: Workbook, file: str | Path):
             }
         },
     )
-    logger.debug("Closed openai inference ({MODEL_ID})")
 
     prediction = json.loads(response.output_text)
-    logger.debug("Prediction response: {}", prediction)
+    logger.debug("Prediction response ({}): {}", MODEL_ID, prediction)
 
     if prediction["sheet_name"] == "UNDETERMINED":
         raise ValueError("Could not determine the inventory usage worksheet")
 
     inventory_sheet = wb[prediction["sheet_name"]]
-    logger.debug(
-        "Inventory sheet: '{}' (rows: {})",
-        inventory_sheet.title,
-        inventory_sheet.max_row,
-    )
-    logger.debug("Defined names available:")
-    for name, defined_name in wb.defined_names.items():
-        destinations = [
-            f"'{sheet_name}'!{cell_range}"
-            for sheet_name, cell_range in defined_name.destinations
-        ]
-        logger.debug("- {} ({})", name, ", ".join(destinations))
-    logger.debug("Closed sheet prediction process")
-
+    sheet_index = wb.sheetnames.index(prediction["sheet_name"])
+    return inventory_sheet, sheet_index
 
 if __name__ == "__main__":
     import argparse
 
-    logger.debug("Starting argument parsing")
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-f",
@@ -138,10 +142,11 @@ if __name__ == "__main__":
 
     file_path = search_workbooks(args.file)
     logger.debug("Opening workbook load process")
-    wb = load_workbook(file_path)
-    logger.debug("Closed workbook load process")
-
-    if wb:
-        predict_inventory_sheet_name(wb, file_path)
-    else:
-        raise FileNotFoundError(file_path)
+    wb = load_workbook(file_path) # pyright: ignore[reportArgumentType]
+    sheet, sheet_index = predict_inventory_sheet_name(wb, file_path) # pyright: ignore[reportArgumentType]
+    logger.debug(
+        "Suggested Sheet: '{}' (index: {}, rows: {})",
+        sheet.title,
+        sheet_index,
+        sheet.max_row,
+    )

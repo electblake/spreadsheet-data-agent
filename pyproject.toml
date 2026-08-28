@@ -16,5 +16,6 @@ dependencies = [
     "pytest>=9.1.1",
     "ruff>=0.16.4",
     "spaces>=0.51.1",
+    "tiktoken>=0.14.0",
     "xlrd>=2.0.2",
 ]
