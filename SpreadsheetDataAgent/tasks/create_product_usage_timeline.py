@@ -6,11 +6,11 @@ from loguru import logger
 from openai import OpenAI
 from openpyxl import Workbook
 
-from SpreadsheetDataAgent.config import DATA_PATH, MODEL_ID
+from SpreadsheetDataAgent.config import MODEL_ID
+from SpreadsheetDataAgent.helpers.document_files import select_file_from_name, save_as_csv
 from SpreadsheetDataAgent.helpers.embeddings import num_tokens
 from SpreadsheetDataAgent.helpers.workbooks import (
-    load_workbook,
-    search_workbooks,
+    load_workbook_file,
     sheet_to_data,
     to_data,
 )
@@ -23,7 +23,7 @@ Workbook evidence:
 
 NAMED_RANGE = "USAGE_TIMELINE"
 
-def predict_product_usage_timeline(
+def create_product_usage_timeline(
     wb: Workbook,
     sheet_name: str | None = None,
     sheet_index: int | None = None,
@@ -131,27 +131,18 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    if file_path := search_workbooks(args.file):
-        if wb := load_workbook(file_path):
-            logger.debug("Opened workbook: {}", file_path)
-            usage_timeline = predict_product_usage_timeline(
+    if file_path := select_file_from_name(args.file):
+        if wb := load_workbook_file(file_path):
+            usage_timeline = create_product_usage_timeline(
                 wb,
                 sheet_name=args.sheet,
                 sheet_index=args.index,
             )
-            output_path = (
-                DATA_PATH
-                / "processed"
-                / "inventory"
-                / file_path.with_suffix(".csv").name
-            )
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            with output_path.open("w", encoding="utf-8", newline="") as output_file:
-                writer = csv.writer(output_file)
-                writer.writerow(usage_timeline["columns"])
-                writer.writerows(usage_timeline["rows"])
+            output_path = save_as_csv(usage_timeline["columns"], usage_timeline["rows"], file_path)
             wb.close()
         else:
-            logger.critical("load_workbook failed given {}", file_path)
+            logger.critical("load_workbook_file failed given {}", file_path)
     else:
-        logger.critical("search_workbooks returned None for {}", args.file)
+        logger.critical("select_file_from_name returned None for {}", args.file)
+
+# TODO: define fastmcp-compatible interface below

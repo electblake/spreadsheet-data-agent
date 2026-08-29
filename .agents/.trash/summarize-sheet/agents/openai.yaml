@@ -1,4 +1,0 @@
-interface:
-  display_name: "Summarize Sheet"
-  short_description: "Create five factual, linked workbook artifacts"
-  default_prompt: "Use $summarize-sheet to create a factual table summary, company metadata, model context, NDJSON, and a manifest for this local XLSX workbook."

@@ -1,9 +1,0 @@
-# kept here for hf spaces compatibilty. developers should use pyproject.toml/uv
-huggingface-hub>=0.34.0,<1.0
-gradio[mcp]==6.17.3
---extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu130
-llama-cpp-python==0.3.34
-openpyxl
-pandas
-spaces
-xlrd

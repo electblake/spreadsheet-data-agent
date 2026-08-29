@@ -1,4 +1,0 @@
-interface:
-  display_name: "NDJSON for Sheet"
-  short_description: "Convert spreadsheet workbooks to NDJSON"
-  default_prompt: "Use $ndjson-for-sheet to convert this spreadsheet into a structured NDJSON file."

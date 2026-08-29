@@ -3,66 +3,20 @@ import json
 from io import StringIO
 from pathlib import Path
 
+from loguru import logger
 from openpyxl import Workbook
 from openpyxl import load_workbook as openpyxl_load_workbook
-from openpyxl.reader.excel import SUPPORTED_FORMATS
 from openpyxl.utils.cell import get_column_letter, quote_sheetname, range_boundaries
 from openpyxl.worksheet.worksheet import Worksheet
 
-from SpreadsheetDataAgent.config import DATA_PATH
 
-
-def list_workbooks(scan: str | Path = DATA_PATH) -> list[tuple[str, Path]]:
-    """returns names and absolute paths for supported files under DATA_PATH"""
-    return [
-        (workbook_path.name, workbook_path.resolve())
-        for workbook_path in sorted(Path(path) for path in scan_files(scan))
-    ]
-
-
-def list_sheets(wb: Workbook) -> list[tuple[int, str]]:
-    return [
-        (sheet_index, sheet.title)
-        for sheet_index, sheet in enumerate(wb.worksheets)
-    ]
-
-def load_workbook(file_path: str | Path) -> Workbook | None:
+def load_workbook_file(file_path: str | Path) -> Workbook | None:
     """returns read-only file handler for xlsx/xlsm files"""
+
+    logger.debug("load_workbook_file: {}", file_path)
+
     # https://openpyxl.readthedocs.io/en/stable/tutorial.html#loading-from-a-file
     return openpyxl_load_workbook(filename=Path(file_path).as_posix(), read_only=True, keep_vba=True, rich_text=True, keep_links=True, data_only=False)
-
-def search_workbooks(namelike: str | Path) -> Path | None:
-    file_path = Path(namelike)
-    if file_path.is_file():
-        return file_path.resolve()
-
-    data_path_file = DATA_PATH / file_path
-    if data_path_file.is_file():
-        return data_path_file.resolve()
-
-    matching_workbooks = [
-        workbook_path
-        for workbook_name, workbook_path in list_workbooks()
-        if workbook_name == file_path.name
-    ]
-    if matching_workbooks:
-        return matching_workbooks[0]
-
-    for pathstring in scan_files(DATA_PATH):
-        p = Path(pathstring)
-        if p.name == namelike:
-            return p
-
-    return None
-
-def scan_files(path: str | Path):
-    import os
-    for entry in os.scandir(path):
-        if entry.is_file():
-            if Path(entry.name).suffix.lower() in SUPPORTED_FORMATS:
-                yield entry.path
-        elif entry.is_dir():
-            yield from scan_files(entry.path)
 
 def read_defined_name_ranges(wb: Workbook) -> list[tuple[str, str, list[str]]]:
     defined_names = list(wb.defined_names.items())
@@ -180,6 +134,7 @@ def sheet_to_headers(sheet: Worksheet) -> list[tuple[str, tuple[object, ...]]]:
 
 
 def word_list(input: str | list[str]) -> list[str]:
+    """make list of unique words from split string(s)"""
     words = set()
     if not isinstance(input, list):
         input = [input]

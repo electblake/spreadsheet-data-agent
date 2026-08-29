@@ -1,10 +1,10 @@
 from platformdirs import user_documents_path
 
-DATA_PATH = user_documents_path() / "SpreadsheetDataAgent" / "data"
-EMBEDDINGS_PATH = DATA_PATH / "interim" / "embeddings"
+DOCUMENTS_DATA_PATH = user_documents_path() / "SpreadsheetDataAgent" / "data"
+EMBEDDINGS_PATH = DOCUMENTS_DATA_PATH / "interim" / "embeddings"
 
 MODEL_ID = "gpt-5.5"
-GPT_MODELS = ["gpt-5.5", "gpt-4o", "gpt-4o-mini"]
+GPT_MODELS = ["gpt-5.6", "gpt-5.5", "gpt-4o", "gpt-4o-mini"]
 EMBEDDING_MODEL = "text-embedding-3-small"
 
 SYSTEM_RULES = [

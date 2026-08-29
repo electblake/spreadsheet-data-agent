@@ -7,10 +7,10 @@ from openpyxl import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
 
 from SpreadsheetDataAgent.config import MODEL_ID, SYSTEM_RULES
+from SpreadsheetDataAgent.helpers.document_files import select_file_from_name
 from SpreadsheetDataAgent.helpers.embeddings import num_tokens
 from SpreadsheetDataAgent.helpers.workbooks import (
-    load_workbook,
-    search_workbooks,
+    load_workbook_file,
     sheet_to_headers,
     word_list,
 )
@@ -24,7 +24,7 @@ Workbook evidence:
 """
 
 
-def pick_inventory_sheet(
+def suggest_inventory_sheet(
     wb: Workbook, workbook_filename: str
 ) -> tuple[Worksheet, int]:
     """Use OpenAI to predict which sheet tracks inventory usage over time."""
@@ -129,9 +129,9 @@ def pick_inventory_sheet(
 
 def main(file: str):
     logger.debug("Opening workbook load process")
-    if file_path := search_workbooks(file):
-        if wb := load_workbook(file_path):
-            inventory_sheet, sheet_index = pick_inventory_sheet(wb, file_path) # pyright: ignore[reportArgumentType]
+    if file_path := select_file_from_name(file):
+        if wb := load_workbook_file(file_path):
+            inventory_sheet, sheet_index = suggest_inventory_sheet(wb, file_path) # pyright: ignore[reportArgumentType]
             logger.debug(
                 "Suggested Sheet: '{}' (index: {}, rows: {})",
                 inventory_sheet.title,
@@ -140,12 +140,13 @@ def main(file: str):
             )
             return inventory_sheet.title, inventory_sheet, sheet_index
         else:
-            logger.critical("could not load_workbook with {}", file_path)
+            logger.critical("could not load_workbook_file with {}", file_path)
     else:
-        logger.critical("search_workbooks returned none for {}", file)
+        logger.critical("select_file_from_name returned none for {}", file)
 
     return None
 
+# handle cli-like callers
 if __name__ == "__main__":
     import argparse
 
@@ -160,3 +161,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(args.file)
+
+# TODO: define fastmcp-compatible interface below
