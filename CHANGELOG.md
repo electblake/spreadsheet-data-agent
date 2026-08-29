@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-29
+
+### Added
+
+- Added an MCP server for spreadsheet data workflows.
+- Added document file discovery and text extraction helpers.
+
+### Changed
+
+- Simplified the project structure around the spreadsheet data agent package.
+
+### Removed
+
+- Removed the legacy Gradio app, requirements file, obsolete skill copies, and outdated README.
+
 ## [0.2.0] - 2026-08-28
 
 ### Added
