@@ -23,7 +23,7 @@ Workbook evidence:
 
 NAMED_RANGE = "USAGE_TIMELINE"
 
-def predict_usage_timeline(
+def predict_product_usage_timeline(
     wb: Workbook,
     sheet_name: str | None = None,
     sheet_index: int | None = None,
@@ -134,7 +134,7 @@ if __name__ == "__main__":
     if file_path := search_workbooks(args.file):
         if wb := load_workbook(file_path):
             logger.debug("Opened workbook: {}", file_path)
-            usage_timeline = predict_usage_timeline(
+            usage_timeline = predict_product_usage_timeline(
                 wb,
                 sheet_name=args.sheet,
                 sheet_index=args.index,

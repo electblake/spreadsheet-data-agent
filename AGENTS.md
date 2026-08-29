@@ -2,9 +2,12 @@
 
 ## Local skills
 
-- [`$ndjson-for-sheet`](.agents/skills/ndjson-for-sheet/SKILL.md) — Convert an XLSX workbook into structured, line-oriented NDJSON.
-- [`$summarize-sheet`](.agents/skills/summarize-sheet/SKILL.md) — Create Markdown, model-context, and NDJSON summaries from an XLSX workbook.
-- [`$inventory-creator`](.agents/skills/inventory-creator/SKILL.md) — Standardize monthly product usage into reusable NDJSON and a single-company inventory workbook.
+- [`$list-workbooks`](.agents/skills/list-workbooks/SKILL.md) — List workbook files under the configured data directory.
+- [`$search-workbooks`](.agents/skills/search-workbooks/SKILL.md) — Resolve a workbook filename or path.
+- [`$list-sheets`](.agents/skills/list-sheets/SKILL.md) — List zero-based worksheet indexes and names.
+- [`$predict-usage-sheet-name`](.agents/skills/predict-usage-sheet-name/SKILL.md) — Identify the worksheet that records product usage history.
+- [`$predict-usage-timeline`](.agents/skills/predict-usage-timeline/SKILL.md) — Normalize workbook values into a monthly product-usage CSV.
+- [`$sheet-to-ndjson`](.agents/skills/sheet-to-ndjson/SKILL.md) — Convert an XLSX workbook into structured, line-oriented NDJSON.
 
 ## Data
 

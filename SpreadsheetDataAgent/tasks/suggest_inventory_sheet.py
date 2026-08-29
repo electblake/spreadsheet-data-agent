@@ -24,7 +24,7 @@ Workbook evidence:
 """
 
 
-def predict_inventory_sheet_name(
+def pick_inventory_sheet(
     wb: Workbook, workbook_filename: str
 ) -> tuple[Worksheet, int]:
     """Use OpenAI to predict which sheet tracks inventory usage over time."""
@@ -127,6 +127,25 @@ def predict_inventory_sheet_name(
     sheet_index = wb.sheetnames.index(prediction["sheet_name"])
     return inventory_sheet, sheet_index
 
+def main(file: str):
+    logger.debug("Opening workbook load process")
+    if file_path := search_workbooks(file):
+        if wb := load_workbook(file_path):
+            inventory_sheet, sheet_index = pick_inventory_sheet(wb, file_path) # pyright: ignore[reportArgumentType]
+            logger.debug(
+                "Suggested Sheet: '{}' (index: {}, rows: {})",
+                inventory_sheet.title,
+                sheet_index,
+                inventory_sheet.max_row,
+            )
+            return inventory_sheet.title, inventory_sheet, sheet_index
+        else:
+            logger.critical("could not load_workbook with {}", file_path)
+    else:
+        logger.critical("search_workbooks returned none for {}", file)
+
+    return None
+
 if __name__ == "__main__":
     import argparse
 
@@ -140,13 +159,4 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    file_path = search_workbooks(args.file)
-    logger.debug("Opening workbook load process")
-    wb = load_workbook(file_path) # pyright: ignore[reportArgumentType]
-    sheet, sheet_index = predict_inventory_sheet_name(wb, file_path) # pyright: ignore[reportArgumentType]
-    logger.debug(
-        "Suggested Sheet: '{}' (index: {}, rows: {})",
-        sheet.title,
-        sheet_index,
-        sheet.max_row,
-    )
+    main(args.file)
