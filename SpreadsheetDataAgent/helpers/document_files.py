@@ -1,9 +1,16 @@
 from pathlib import Path
 
 from openpyxl.reader.excel import SUPPORTED_FORMATS
-
+from pydantic import BaseModel
 from SpreadsheetDataAgent.config import DOCUMENTS_DATA_PATH
 
+
+class WorkbookFile(BaseModel):
+    name: str
+    path: str
+
+class WorkbookFiles(BaseModel):
+    files: list[WorkbookFile]
 
 def document_output_path(subdir: str, original_file_path: Path, suffix: str):
     output_path = (

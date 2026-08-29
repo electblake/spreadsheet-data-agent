@@ -5,7 +5,6 @@ from loguru import logger
 from openai import OpenAI
 from openpyxl import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
-
 from SpreadsheetDataAgent.config import MODEL_ID, SYSTEM_RULES
 from SpreadsheetDataAgent.helpers.document_files import select_file_from_name
 from SpreadsheetDataAgent.helpers.embeddings import num_tokens

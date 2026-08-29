@@ -3,7 +3,6 @@ from openai import OpenAI
 from openpyxl import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from pandas import DataFrame
-
 from SpreadsheetDataAgent.config import EMBEDDING_MODEL, MODEL_ID
 
 

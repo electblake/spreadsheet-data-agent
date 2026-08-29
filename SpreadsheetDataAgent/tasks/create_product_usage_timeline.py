@@ -1,13 +1,13 @@
-import csv
 import json
 from pathlib import Path
 
 from loguru import logger
 from openai import OpenAI
 from openpyxl import Workbook
+from pydantic import BaseModel
 
 from SpreadsheetDataAgent.config import MODEL_ID
-from SpreadsheetDataAgent.helpers.document_files import select_file_from_name, save_as_csv
+from SpreadsheetDataAgent.helpers.document_files import save_as_csv, select_file_from_name
 from SpreadsheetDataAgent.helpers.embeddings import num_tokens
 from SpreadsheetDataAgent.helpers.workbooks import (
     load_workbook_file,
@@ -23,7 +23,11 @@ Workbook evidence:
 
 NAMED_RANGE = "USAGE_TIMELINE"
 
-def create_product_usage_timeline(
+class ProductUsageTimeline(BaseModel):
+    columns: list[str]
+    rows: list[list[str | int | float]]
+
+def run_task(
     wb: Workbook,
     sheet_name: str | None = None,
     sheet_index: int | None = None,
@@ -133,7 +137,7 @@ if __name__ == "__main__":
 
     if file_path := select_file_from_name(args.file):
         if wb := load_workbook_file(file_path):
-            usage_timeline = create_product_usage_timeline(
+            usage_timeline = run_task(
                 wb,
                 sheet_name=args.sheet,
                 sheet_index=args.index,
