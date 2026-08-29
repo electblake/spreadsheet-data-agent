@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-28
+
+### Added
+
+- Added tabbed spreadsheet workflows with workbook previews and table inference.
+- Added workbook discovery, worksheet selection, NDJSON conversion, and product usage timeline skills.
+- Added token-aware workbook processing and continuous monthly product usage timelines.
+
+### Changed
+
+- Replaced legacy spreadsheet skills and tools with focused workbook workflows.
+- Centralized workbook helpers and adopted platform-specific data paths.
+
 ## [0.1.2] - 2026-08-16
 
 ### Added
