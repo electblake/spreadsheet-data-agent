@@ -1,22 +1,11 @@
 import csv
 import json
 from io import StringIO
-from pathlib import Path
 
-from loguru import logger
 from openpyxl import Workbook
-from openpyxl import load_workbook as openpyxl_load_workbook
 from openpyxl.utils.cell import get_column_letter, quote_sheetname, range_boundaries
 from openpyxl.worksheet.worksheet import Worksheet
 
-
-def load_workbook_file(file_path: str | Path) -> Workbook | None:
-    """returns read-only file handler for xlsx/xlsm files"""
-
-    logger.debug("load_workbook_file: {}", file_path)
-
-    # https://openpyxl.readthedocs.io/en/stable/tutorial.html#loading-from-a-file
-    return openpyxl_load_workbook(filename=Path(file_path).as_posix(), read_only=True, keep_vba=True, rich_text=True, keep_links=True, data_only=False)
 
 def read_defined_name_ranges(wb: Workbook) -> list[tuple[str, str, list[str]]]:
     defined_names = list(wb.defined_names.items())

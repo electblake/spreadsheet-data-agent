@@ -5,11 +5,12 @@ from loguru import logger
 from openai import OpenAI
 from openpyxl import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
-from SpreadsheetDataAgent.config import MODEL_ID, SYSTEM_RULES
-from SpreadsheetDataAgent.helpers.document_files import select_file_from_name
-from SpreadsheetDataAgent.helpers.embeddings import num_tokens
-from SpreadsheetDataAgent.helpers.workbooks import (
-    load_workbook_file,
+
+from spreadsheet_data_agent.config import MODEL_ID, SYSTEM_RULES
+from spreadsheet_data_agent.helpers import document_files
+from spreadsheet_data_agent.helpers.document_files import select_file_from_name
+from spreadsheet_data_agent.helpers.embeddings import num_tokens
+from spreadsheet_data_agent.helpers.workbooks import (
     sheet_to_headers,
     word_list,
 )
@@ -129,7 +130,7 @@ def suggest_inventory_sheet(
 def main(file: str):
     logger.debug("Opening workbook load process")
     if file_path := select_file_from_name(file):
-        if wb := load_workbook_file(file_path):
+        if wb := document_files.load_workbook_file(file_path):
             inventory_sheet, sheet_index = suggest_inventory_sheet(wb, file_path) # pyright: ignore[reportArgumentType]
             logger.debug(
                 "Suggested Sheet: '{}' (index: {}, rows: {})",

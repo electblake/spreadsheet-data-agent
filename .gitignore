@@ -3,6 +3,7 @@ __pycache__/
 *.py[oc]
 build/
 dist/
+dependencies/
 data/
 wheels/
 *.egg-info
@@ -12,3 +13,4 @@ wheels/
 uv.lock
 .ruff_cache
 .venv
+**/.pytest_cache

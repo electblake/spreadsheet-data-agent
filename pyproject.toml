@@ -3,18 +3,21 @@ name = "spreadsheet-data-agent"
 version = "0.3.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.10,<3.11"
 dependencies = [
-    "fastmcp>=3.4.7",
-    "loguru>=0.7.3",
-    "openai>=3.3.1",
-    "openpyxl>=3.1.5",
-    "pandas>=3.0.5",
-    "platformdirs>=4.11.5",
-    "pydantic>=2.13.4",
-    "tiktoken>=0.14.0",
-    "xlrd>=2.0.2",
+    "fastmcp",
+    "loguru",
+    "openai",
+    "openpyxl",
+    "pandas",
+    "platformdirs",
+    "pydantic",
+    "tiktoken",
+    "xlrd",
 ]
+
+[project.scripts]
+fastmcp = "spreadsheet_data_agent.mcp_cli:main"
 
 [project.optional-dependencies]
 build = [
@@ -26,12 +29,15 @@ build = [
 requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+py-modules = ["sitecustomize"]
+
 [tool.setuptools.packages.find]
-include = ["SpreadsheetDataAgent*"]
+include = ["spreadsheet_data_agent*", "SpreadsheetDataAgent*"]
 
 [tool.ruff]
 # target-version = "py38"
 line-length = 120
 required-version = ">=0.15.7"
-src = ["SpreadsheetDataAgent", "tests"]
+src = ["spreadsheet_data_agent", "SpreadsheetDataAgent", "tests"]
 extend-exclude = ["vendor", "dist", "data", "notebooks", ".vscode", ".agents/.trash"]

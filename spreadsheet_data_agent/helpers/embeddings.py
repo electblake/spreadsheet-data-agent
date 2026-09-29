@@ -3,7 +3,7 @@ from openai import OpenAI
 from openpyxl import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from pandas import DataFrame
-from SpreadsheetDataAgent.config import EMBEDDING_MODEL, MODEL_ID
+from spreadsheet_data_agent.config import EMBEDDING_MODEL, MODEL_ID
 
 
 def sheet_to_df(sheet: Worksheet) -> DataFrame:

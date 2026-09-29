@@ -1,8 +1,11 @@
 from pathlib import Path
 
+from loguru import logger
+from openpyxl import Workbook
+from openpyxl import load_workbook as openpyxl_load_workbook
 from openpyxl.reader.excel import SUPPORTED_FORMATS
 from pydantic import BaseModel
-from SpreadsheetDataAgent.config import DOCUMENTS_DATA_PATH
+from spreadsheet_data_agent.config import DOCUMENTS_DATA_PATH
 
 
 class WorkbookFile(BaseModel):
@@ -11,6 +14,14 @@ class WorkbookFile(BaseModel):
 
 class WorkbookFiles(BaseModel):
     files: list[WorkbookFile]
+
+def load_workbook_file(file_path: str | Path) -> Workbook | None:
+    """returns read-only file handler for xlsx/xlsm files"""
+
+    logger.debug("load_workbook_file: {}", file_path)
+
+    # https://openpyxl.readthedocs.io/en/stable/tutorial.html#loading-from-a-file
+    return openpyxl_load_workbook(filename=Path(file_path).as_posix(), read_only=True, keep_vba=True, rich_text=True, keep_links=True, data_only=False)
 
 def document_output_path(subdir: str, original_file_path: Path, suffix: str):
     output_path = (
@@ -44,6 +55,14 @@ def list_workbook_files(path: str | Path = DOCUMENTS_DATA_PATH):
                 yield Path(entry.path)
         elif entry.is_dir():
             yield from list_workbook_files(entry.path)
+
+def to_models(pathlist: list) -> WorkbookFiles:
+    return WorkbookFiles(
+        files=[
+            WorkbookFile(name=file_path.name, path=str(file_path.resolve()))
+            for file_path in pathlist
+        ]
+    )
 
 def select_file_from_name(namelike: str | Path) -> Path | None:
     """primary file input resolver with built-in checking rules in order"""

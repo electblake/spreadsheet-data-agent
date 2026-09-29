@@ -2,12 +2,10 @@ import argparse
 
 from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
-
-from SpreadsheetDataAgent.config import DOCUMENTS_DATA_PATH
-from SpreadsheetDataAgent.helpers import document_files
-from SpreadsheetDataAgent.helpers.workbooks import load_workbook_file
-from SpreadsheetDataAgent.tasks.create_product_usage_timeline import ProductUsageTimeline
-from SpreadsheetDataAgent.tasks.create_product_usage_timeline import (
+from spreadsheet_data_agent.config import DOCUMENTS_DATA_PATH
+from spreadsheet_data_agent.helpers import document_files
+from spreadsheet_data_agent.tasks.create_product_usage_timeline import ProductUsageTimeline
+from spreadsheet_data_agent.tasks.create_product_usage_timeline import (
     run_task as run_product_usage_timeline_task,
 )
 
@@ -35,12 +33,7 @@ mcp = FastMCP(
 def list_workbook_files_tool(
     path: str = str(DOCUMENTS_DATA_PATH),
 ) -> document_files.WorkbookFiles:
-    return document_files.WorkbookFiles(
-        files=[
-            document_files.WorkbookFile(name=file_path.name, path=str(file_path.resolve())) for file_path in document_files.list_workbook_files(path)
-        ]
-    )
-
+    return document_files.to_models(document_files.list_workbook_files(path))
 
 @mcp.tool(
     name="create_product_usage_timeline",
@@ -62,7 +55,7 @@ def create_product_usage_timeline_tool(
     sheet_index: int | None = None,
 ) -> ProductUsageTimeline:
     file_path = document_files.select_file_from_name(file)
-    workbook = load_workbook_file(file_path)  # pyright: ignore[reportArgumentType]
+    workbook = document_files.load_workbook_file(file_path)  # pyright: ignore[reportArgumentType]
     timeline = run_product_usage_timeline_task(
         workbook,  # pyright: ignore[reportArgumentType]
         sheet_name=sheet_name,
@@ -89,42 +82,3 @@ def main(transport, host, port, path, *, no_banner, log_level):
         log_level=log_level,
         show_banner=not no_banner,
     )
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run the Spreadsheet Data Agent MCP server.")
-    parser.add_argument(
-        "--transport",
-        choices=("stdio", "http"),
-        default="stdio",
-        help="MCP transport (default: stdio).",
-    )
-    parser.add_argument(
-        "--host",
-        default="127.0.0.1",
-        help="HTTP bind address (default: 127.0.0.1).",
-    )
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=8000,
-        help="HTTP bind port (default: 8000).",
-    )
-    parser.add_argument(
-        "--path",
-        default="/mcp",
-        help="HTTP endpoint path (default: /mcp).",
-    )
-    parser.add_argument(
-        "--log-level",
-        choices=("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"),
-        default="INFO",
-        help="Server log level (default: INFO).",
-    )
-    parser.add_argument(
-        "--no-banner",
-        action="store_true",
-        help="Hide the FastMCP startup banner.",
-    )
-    args = parser.parse_args()
-    main(args.transport, args.host, args.port, args.path, args.no_banner, args.log_level)
